@@ -12,11 +12,13 @@ import {StdCheats} from "../lib/forge-std/src/StdCheats.sol";
 
 contract FourMarketTest is StdCheats, Test {
     Deploy4Market public s_deployer;
-    FourMarket public s_4market;
+    FourMarket public s_4Market;
 
     /// @notice Set up the environment for each test, deploying contracts and funding test accounts
     function setUp() external {
         s_deployer = new Deploy4Market();
-        s_4market = s_deployer.run();
+        s_4Market = s_deployer.run();
     }
+
+    function testSomething() external {}
 }
