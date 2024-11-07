@@ -33,8 +33,6 @@ contract FourMarket {
     /// @dev Custom error for cases where a market ID does not exist.
     error MarketIdDoesNotExist();
 
-    constructor() {}
-
     /**
      * @notice Creates a new market with the specified parameters.
      * @param _question The question for the market.
@@ -98,5 +96,9 @@ contract FourMarket {
     {
         require(_marketId < s_nextMarketId, MarketIdDoesNotExist());
         return markets[_marketId].getMarketDetails();
+    }
+
+    fallback() external {
+        revert();
     }
 }

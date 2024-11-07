@@ -198,4 +198,8 @@ contract Market {
             address(s_noToken)
         );
     }
+
+    fallback() external {
+        revert();
+    }
 }

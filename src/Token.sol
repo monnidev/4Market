@@ -33,4 +33,8 @@ contract Token is ERC20Burnable {
         require(msg.sender == i_deployer, OnlyDeployerCanMint());
         _mint(to, amount);
     }
+
+    fallback() external {
+        revert();
+    }
 }
