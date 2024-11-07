@@ -1,66 +1,38 @@
-## Foundry
+# 4Market
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
 
-Foundry consists of:
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## Table of Contents
 
-## Documentation
+- [Introduction](#introduction)
+- [Prerequisites](#prerequisites)
+- [Quickstart](#quickstart)
 
-https://book.getfoundry.sh/
+## Introduction
 
-## Usage
+## Prerequisites
 
-### Build
+Before setting up the project, ensure you have the following installed:
 
-```shell
-$ forge build
-```
+- **Git**: Version control system for cloning and managing repositories.
+  - **Installation**: Follow the official [Git installation guide](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
+  - **Verification**: Run `git --version` in your terminal. You should see output like `git version x.x.x`.
 
-### Test
+- **Foundry**: A blazing fast, portable, and modular toolkit for Ethereum application development written in Rust.
+  - **Installation**: Use the command provided at [Foundry's official website](https://getfoundry.sh/).
+  - **Verification**: Run `forge --version` in your terminal. Expected output is similar to `forge x.x.x`.
 
-```shell
-$ forge test
-```
+## Quickstart
 
-### Format
+Follow the steps below to set up the project locally:
 
-```shell
-$ forge fmt
-```
+```bash
+# Clone the repository
+git clone https://github.com/monnidev/4Market.git
 
-### Gas Snapshots
+# Navigate to the project directory
+cd 4Market
 
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+# Install dependencies
+make install
 ```
