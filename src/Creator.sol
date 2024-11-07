@@ -14,6 +14,25 @@ contract FourMarket {
     /// @dev Tracks the next market ID to be assigned.
     uint256 private s_nextMarketId;
 
+    /// @notice Event emitted upon the creation of a new market.
+    /// @param marketId The ID of the newly created market.
+    /// @param question The question associated with the market.
+    /// @param details Additional details about the market.
+    /// @param deadline The closing timestamp for new participants.
+    /// @param resolutionTime Expected resolution timestamp for the market.
+    /// @param resolver Address of the entity responsible for resolving the market.
+    event MarketCreated(
+        uint256 indexed marketId,
+        string question,
+        string details,
+        uint256 deadline,
+        uint256 resolutionTime,
+        address indexed resolver
+    );
+
+    /// @dev Custom error for cases where a market ID does not exist.
+    error MarketIdDoesNotExist();
+
     constructor() {}
 
     /**
@@ -35,10 +54,14 @@ contract FourMarket {
         Market market = new Market(_nextMarketId, _question, _details, _deadline, _resolutionTime, _resolver);
         markets[_nextMarketId] = market;
         s_nextMarketId++;
+
+        // Emit the MarketCreated event with relevant details
+        emit MarketCreated(_nextMarketId, _question, _details, _deadline, _resolutionTime, _resolver);
     }
 
     /**
      * @notice Retrieves the details of a deployed market by its ID.
+     * @dev Due to this function --via-ir is required to avoid 'Stack too deep' errors.
      * @param _marketId The ID of the market to retrieve.
      * @return i_router Address of the router associated with the market.
      * @return i_marketId ID of the market.
@@ -73,7 +96,7 @@ contract FourMarket {
             address
         )
     {
-        require(_marketId < s_nextMarketId, "Market ID does not exist");
+        require(_marketId < s_nextMarketId, MarketIdDoesNotExist());
         return markets[_marketId].getMarketDetails();
     }
 }

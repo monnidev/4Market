@@ -52,7 +52,7 @@ contract Market {
     error Market__InactivityPeriodNotReached();
 
     // Events
-    event BetPlaced(address indexed bettor, outcomeType outcome, uint256 amount);
+    event BetPlaced(address indexed user, outcomeType outcome, uint256 amount);
     event MarketResolved(outcomeType finalOutcome, uint256 resolvedDate);
     event RewardsDistributed(address indexed user, uint256 rewardAmount);
     event MarketCancelled(uint256 cancelledDate);
