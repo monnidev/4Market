@@ -22,6 +22,18 @@ Before setting up the project, ensure you have the following installed:
   - **Installation**: Use the command provided at [Foundry's official website](https://getfoundry.sh/).
   - **Verification**: Run `forge --version` in your terminal. Expected output is similar to `forge x.x.x`.
 
+- **Yarn**: Fast, reliable, and secure dependency management for JavaScript projects.
+  - **Installation**: Follow the [Yarn installation guide](https://yarnpkg.com/getting-started/install).
+    ```bash
+    # Install Yarn globally using npm
+    npm install --global yarn
+    ```
+  - **Verification**: Run the following command to confirm installation:
+    ```bash
+    yarn --version
+    ```
+
+
 ## Quickstart
 
 Follow the steps below to set up the project locally:

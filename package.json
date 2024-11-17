@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "forge-std": "foundry-rs/forge-std",
+    "openzeppelin-solidity": "openzeppelin/openzeppelin-contracts"
+  }
+}

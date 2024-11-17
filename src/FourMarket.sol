@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-// we could add erc20s, ownership, upgradability, fees, appeal system, other types of markets, web ui, tests
+// we could add erc20s, appeal system, other types of markets, web ui, tests, bad stuff (ownable, uups)
 // resolver can be a eoa, an oracle, a llm....
 // consider rewriting in yul with differential testing
 
@@ -12,7 +12,9 @@ contract FourMarket {
     mapping(uint256 => Market) public markets;
 
     /// @dev Tracks the next market ID to be assigned.
-    uint256 private s_nextMarketId;
+    uint256 public s_nextMarketId;
+    mapping(address => mapping(Market => bool)) public s_deposits;
+    uint256 public constant DEPOSIT_VALUE = 0.001 ether; // must return a constant
 
     /// @notice Event emitted upon the creation of a new market.
     /// @param marketId The ID of the newly created market.
@@ -47,14 +49,28 @@ contract FourMarket {
         uint256 _deadline,
         uint256 _resolutionTime,
         address _resolver
-    ) external {
+    ) external payable {
+        require(msg.value == DEPOSIT_VALUE);
         uint256 _nextMarketId = s_nextMarketId;
         Market market = new Market(_nextMarketId, _question, _details, _deadline, _resolutionTime, _resolver);
         markets[_nextMarketId] = market;
+        s_deposits[msg.sender][market] = true;
         s_nextMarketId++;
 
         // Emit the MarketCreated event with relevant details
         emit MarketCreated(_nextMarketId, _question, _details, _deadline, _resolutionTime, _resolver);
+    }
+
+    function refundDeposit(Market _marketToRefund) external {
+        require(s_deposits[msg.sender][_marketToRefund]);
+        uint256 _yesTokenSupply = _marketToRefund.s_yesToken().totalSupply();
+        uint256 _noTokenSupply = _marketToRefund.s_noToken().totalSupply();
+        if (_yesTokenSupply + _noTokenSupply >= DEPOSIT_VALUE) {
+            s_deposits[msg.sender][_marketToRefund] = false;
+            payable(msg.sender).transfer(DEPOSIT_VALUE);
+        } else {
+            revert();
+        }
     }
 
     /**

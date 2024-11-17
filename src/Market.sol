@@ -24,7 +24,7 @@ contract Market {
     address immutable i_resolver;
 
     /// @notice The total balance of the market.
-    uint256 private s_balance;
+    uint256 public s_balance;
     /// @notice The question being bet on.
     string private s_question;
     /// @notice Additional details about the market.
@@ -36,9 +36,9 @@ contract Market {
     /// @notice The final outcome of the market.
     outcomeType private s_finalResolution;
     /// @notice The token representing "Yes" bets.
-    Token s_yesToken;
+    Token public s_yesToken;
     /// @notice The token representing "No" bets.
-    Token s_noToken;
+    Token public s_noToken;
 
     // Custom errors
     error Market__InvalidResolutionTime();
