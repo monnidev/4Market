@@ -26,8 +26,9 @@ contract TokenTest is Test {
         assertEq(token.balanceOf(user1), 1000);
     }
 
-    function testNonDeployerCannotMint() public {
-        vm.prank(user1);
+    function testNonDeployerCannotMint(address nonDeployer) public {
+        vm.assume(nonDeployer != deployer);
+        vm.prank(nonDeployer);
         vm.expectRevert(Token.OnlyDeployerCanMint.selector);
         token.mint(user1, 1000);
     }

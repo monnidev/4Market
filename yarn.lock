@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-forge-std@foundry-rs/forge-std:
+"forge-std@https://github.com/foundry-rs/forge-std":
   version "1.9.4"
-  resolved "https://codeload.github.com/foundry-rs/forge-std/tar.gz/0e7097750918380d84dd3cfdef595bee74dabb70"
+  resolved "https://github.com/foundry-rs/forge-std#0e7097750918380d84dd3cfdef595bee74dabb70"
 
-openzeppelin-solidity@openzeppelin/openzeppelin-contracts:
+"openzeppelin-solidity@https://github.com/OpenZeppelin/openzeppelin-contracts":
   version "5.1.0"
-  resolved "https://codeload.github.com/openzeppelin/openzeppelin-contracts/tar.gz/448efeea6640bbbc09373f03fbc9c88e280147ba"
+  resolved "https://github.com/OpenZeppelin/openzeppelin-contracts#dac63c4612df765c9d0f24d9148e912b8cd5032f"
