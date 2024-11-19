@@ -1,3 +1,3 @@
 -include .env
 
-install :; yarn install
+install :; forge install

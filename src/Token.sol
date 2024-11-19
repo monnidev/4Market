@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {ERC20Burnable, ERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {ERC20Burnable, ERC20} from "lib/openzeppelin-solidity/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
 /// @title Token Contract
 /// @notice A burnable ERC20 token with a deployer-controlled minting mechanism.

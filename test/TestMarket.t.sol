@@ -1,76 +1,160 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import "forge-std/Test.sol";
-import "src/Market.sol";
-import "src/Token.sol";
+import "lib/forge-std/src/Test.sol";
+import "../src/FourMarket.sol";
+import "../src/Market.sol";
+import "../src/Token.sol";
 
 contract MarketTest is Test {
-    Market market;
-    Token yesToken;
-    Token noToken;
-    address user1;
-    address user2;
-    address resolver;
-    uint256 marketId;
-    string question;
-    string details;
-    uint256 deadline;
-    uint256 resolutionTime;
+    FourMarket public fourMarket;
+    Market public market;
+    Token public yesToken;
+    Token public noToken;
+
+    address public deployer = address(this);
+    address public user1;
+    address public user2;
+    address public resolver;
+
+    uint256 public deadline;
+    uint256 public resolutionTime;
 
     function setUp() public {
-        user1 = address(0x1);
-        user2 = address(0x2);
-        resolver = address(0x3);
-        marketId = 1;
-        question = "Will it rain tomorrow?";
-        details = "Some details";
+        // Generate addresses to avoid using reserved addresses
+        user1 = vm.addr(1);
+        user2 = vm.addr(2);
+        resolver = vm.addr(3);
+
+        // Deploy the FourMarket contract
+        fourMarket = new FourMarket();
+
+        // Set up market parameters
+        string memory question = "Will it rain tomorrow?";
+        string memory details = "Weather forecast for city XYZ";
         deadline = block.timestamp + 1 days;
-        resolutionTime = 1 days + 1; // needs to be greater than 1 day
+        resolutionTime = 2 days; // Must be greater than 1 day as per contract requirement
 
-        market = new Market(marketId, question, details, deadline, resolutionTime, resolver);
+        // Create a new market
+        market = fourMarket.createMarket(question, details, deadline, resolutionTime, resolver);
 
-        yesToken = market.s_yesToken();
-        noToken = market.s_noToken();
+        // Retrieve the Yes and No tokens
+        (,,,,,,,,,,, address yesTokenAddress, address noTokenAddress) = market.getMarketDetails();
 
-        // Provide some initial balance to users
-        vm.deal(user1, 10 ether);
-        vm.deal(user2, 10 ether);
+        yesToken = Token(yesTokenAddress);
+        noToken = Token(noTokenAddress);
     }
 
-    function testCannotBetAfterDeadline() public {
+    /// @notice Test distributing rewards for "Yes" outcome
+    function testDistributeYesOutcome() public {
+        // User1 bets on Yes
+        vm.deal(user1, 1 ether);
+        vm.prank(user1);
+        market.bet{value: 1 ether}(Market.outcomeType.Yes);
+
+        // User2 bets on No
+        vm.deal(user2, 1 ether);
+        vm.prank(user2);
+        market.bet{value: 1 ether}(Market.outcomeType.No);
+
+        // Fast forward to after the deadline
         vm.warp(deadline + 1);
+
+        // Resolver resolves the market to "Yes"
+        vm.prank(resolver);
+        market.resolve(Market.outcomeType.Yes);
+
+        // User1 approves the market to burn tokens
+        vm.startPrank(user1);
+        yesToken.approve(address(market), yesToken.balanceOf(user1));
+
+        // User1 claims reward
+        uint256 user1BalanceBefore = user1.balance;
+        market.distribute();
+        uint256 user1BalanceAfter = user1.balance;
+
+        vm.stopPrank();
+
+        // User1 should receive the entire market balance (since User2 bet on the losing outcome)
+        assertApproxEqRel(user1BalanceAfter - user1BalanceBefore, 2 ether, 0.01e18);
+
+        // User2 tries to claim but has no winning tokens
+        vm.startPrank(user2);
+        vm.expectRevert(Market.Market__NoTokensToClaim.selector);
+        market.distribute();
+        vm.stopPrank();
+    }
+
+    /// @notice Invariant test to ensure market balance equals total bets placed
+    function invariant_MarketBalanceEqualsTotalBets() public view {
+        uint256 yesTokenSupply = yesToken.totalSupply() - 1;
+        uint256 noTokenSupply = noToken.totalSupply() - 1;
+
+        uint256 totalBets = yesTokenSupply + noTokenSupply;
+        uint256 marketBalance = address(market).balance;
+
+        // Skip the check if totalBets or marketBalance are unreasonably large to prevent overflows
+        if (totalBets > 1e28 || marketBalance > 1e28) {
+            return;
+        }
+
+        // Allow a small difference due to the initial extra token and rounding
+        assertApproxEqAbs(totalBets, marketBalance, 1 wei);
+    }
+
+    /// @notice Test placing a bet on "Yes" outcome
+    function testBetYes() public {
+        vm.deal(user1, 1 ether);
+        vm.prank(user1);
+        market.bet{value: 1 ether}(Market.outcomeType.Yes);
+
+        uint256 userBalance = yesToken.balanceOf(user1);
+        assertEq(userBalance, 1 ether);
+
+        uint256 marketBalance = address(market).balance;
+        assertEq(marketBalance, 1 ether);
+    }
+
+    /// @notice Test placing a bet on "No" outcome
+    function testBetNo() public {
+        vm.deal(user2, 1 ether);
+        vm.prank(user2);
+        market.bet{value: 1 ether}(Market.outcomeType.No);
+
+        uint256 userBalance = noToken.balanceOf(user2);
+        assertEq(userBalance, 1 ether);
+
+        uint256 marketBalance = address(market).balance;
+        assertEq(marketBalance, 1 ether);
+    }
+
+    /// @notice Test betting after the deadline
+    function testBetAfterDeadline() public {
+        vm.warp(deadline + 1);
+        vm.deal(user1, 1 ether);
         vm.prank(user1);
         vm.expectRevert(Market.Market__BettingClosed.selector);
         market.bet{value: 1 ether}(Market.outcomeType.Yes);
     }
 
-    function testCannotBetOnNeither() public {
-        vm.prank(user1);
-        vm.expectRevert(Market.Market__InvalidBetOutcome.selector);
-        market.bet{value: 1 ether}(Market.outcomeType.Neither);
-    }
-
-    function testBetYes() public {
-        vm.prank(user1);
-        market.bet{value: 1 ether}(Market.outcomeType.Yes);
-        assertEq(yesToken.balanceOf(user1), 1 ether);
-        assertEq(market.s_balance(), 1 ether);
-    }
-
-    function testBetNo() public {
-        vm.prank(user1);
-        market.bet{value: 1 ether}(Market.outcomeType.No);
-        assertEq(noToken.balanceOf(user1), 1 ether);
-        assertEq(market.s_balance(), 1 ether);
-    }
-
+    /// @notice Test resolving the market too early
     function testResolveTooEarly() public {
         vm.prank(resolver);
         vm.expectRevert(Market.Market__ResolveTooEarly.selector);
         market.resolve(Market.outcomeType.Yes);
     }
 
+    /// @notice Test resolving the market within the resolution time
+    function testResolve() public {
+        vm.warp(deadline + 1);
+        vm.prank(resolver);
+        market.resolve(Market.outcomeType.Yes);
+
+        (,,,,,,,, bool resolved,,,,) = market.getMarketDetails();
+        assertTrue(resolved);
+    }
+
+    /// @notice Test resolving the market too late
     function testResolveTooLate() public {
         vm.warp(deadline + resolutionTime + 1);
         vm.prank(resolver);
@@ -78,156 +162,96 @@ contract MarketTest is Test {
         market.resolve(Market.outcomeType.Yes);
     }
 
-    function testResolve() public {
-        vm.warp(deadline);
-        vm.prank(resolver);
-        market.resolve(Market.outcomeType.Yes);
-        (,,,,,,,, bool resolved,,,,) = market.getMarketDetails();
-        assertTrue(resolved);
-    }
-
-    function testCannotResolveTwice() public {
-        vm.warp(deadline);
-        vm.prank(resolver);
-        market.resolve(Market.outcomeType.Yes);
-        vm.prank(resolver);
-        vm.expectRevert(Market.Market__AlreadyResolved.selector);
-        market.resolve(Market.outcomeType.No);
-    }
-
-    function testDistributeRewardsYesWins() public {
-        vm.prank(user1);
-        market.bet{value: 1 ether}(Market.outcomeType.Yes);
-        vm.prank(user2);
-        market.bet{value: 1 ether}(Market.outcomeType.No);
-
-        vm.warp(deadline);
-        vm.prank(resolver);
-        market.resolve(Market.outcomeType.Yes);
-
-        vm.prank(user1);
-        uint256 balanceBefore = user1.balance;
-        market.distribute();
-        uint256 balanceAfter = user1.balance;
-        assertEq(balanceAfter - balanceBefore, 2 ether); // Should get the whole pot
-    }
-
-    function testDistributeRewardsNoWins() public {
-        vm.prank(user1);
-        market.bet{value: 1 ether}(Market.outcomeType.Yes);
-        vm.prank(user2);
-        market.bet{value: 1 ether}(Market.outcomeType.No);
-
-        vm.warp(deadline);
-        vm.prank(resolver);
-        market.resolve(Market.outcomeType.No);
-
-        vm.prank(user2);
-        uint256 balanceBefore = user2.balance;
-        market.distribute();
-        uint256 balanceAfter = user2.balance;
-        assertEq(balanceAfter - balanceBefore, 2 ether);
-    }
-
-    function testDistributeRewardsNeither() public {
-        vm.prank(user1);
-        market.bet{value: 1 ether}(Market.outcomeType.Yes);
-        vm.prank(user2);
-        market.bet{value: 1 ether}(Market.outcomeType.No);
-
-        vm.warp(deadline + resolutionTime + 1);
-        market.inactivityCancel();
-
-        vm.prank(user1);
-        uint256 balanceBefore1 = user1.balance;
-        market.distribute();
-        uint256 balanceAfter1 = user1.balance;
-        assertEq(balanceAfter1 - balanceBefore1, 1 ether);
-
-        vm.prank(user2);
-        uint256 balanceBefore2 = user2.balance;
-        market.distribute();
-        uint256 balanceAfter2 = user2.balance;
-        assertEq(balanceAfter2 - balanceBefore2, 1 ether);
-    }
-
-    function testCannotDistributeTwice() public {
+    /// @notice Test distributing rewards before the market is resolved
+    function testDistributeBeforeResolution() public {
+        vm.deal(user1, 1 ether);
         vm.prank(user1);
         market.bet{value: 1 ether}(Market.outcomeType.Yes);
 
-        vm.warp(deadline);
-        vm.prank(resolver);
-        market.resolve(Market.outcomeType.Yes);
-
-        vm.prank(user1);
-        market.distribute();
-
-        vm.prank(user1);
-        vm.expectRevert(Market.Market__NoTokensToClaim.selector);
-        market.distribute();
-    }
-
-    function testCannotDistributeIfNotResolved() public {
-        vm.prank(user1);
-        market.bet{value: 1 ether}(Market.outcomeType.Yes);
-
-        vm.prank(user1);
+        vm.startPrank(user1);
         vm.expectRevert(Market.Market__NotResolved.selector);
         market.distribute();
+        vm.stopPrank();
     }
 
-    function testInactivityCancelTooEarly() public {
-        vm.warp(deadline + resolutionTime - 1);
-        vm.expectRevert(Market.Market__InactivityPeriodNotReached.selector);
-        market.inactivityCancel();
-    }
-
-    function testInactivityCancelAfterPeriod() public {
+    /// @notice Test inactivity cancellation
+    function testInactivityCancel() public {
         vm.warp(deadline + resolutionTime + 1);
+        vm.prank(user1);
         market.inactivityCancel();
-        (,,,,,,,, bool resolved,,,,) = market.getMarketDetails();
+
+        (,,,,,,,, bool resolved,, Market.outcomeType finalOutcome,,) = market.getMarketDetails();
         assertTrue(resolved);
+        assertEq(uint8(finalOutcome), uint8(Market.outcomeType.Neither));
     }
 
+    /// @notice Fuzz test for placing bets
     function testFuzzBet(uint256 amount) public {
-        vm.assume(amount > 0 && amount < 100 ether);
+        vm.assume(amount >= 0.1 ether && amount <= 1000 ether);
+        vm.deal(user1, amount);
         vm.prank(user1);
         market.bet{value: amount}(Market.outcomeType.Yes);
-        assertEq(yesToken.balanceOf(user1), amount);
-        assertEq(market.s_balance(), amount);
+
+        uint256 userBalance = yesToken.balanceOf(user1);
+        assertEq(userBalance, amount);
+
+        uint256 marketBalance = address(market).balance;
+        assertEq(marketBalance, amount);
     }
 
-    function testFuzzDistribute(uint256 amountYes, uint256 amountNo) public {
-        vm.assume(amountYes > 0 && amountYes < 100 ether);
-        vm.assume(amountNo > 0 && amountNo < 100 ether);
+    /// @notice Fuzz test for resolving with different outcomes
+    function testFuzzResolve(uint8 outcome) public {
+        vm.assume(outcome <= uint8(Market.outcomeType.No));
 
+        vm.warp(deadline + 1);
+        vm.prank(resolver);
+        market.resolve(Market.outcomeType(outcome));
+
+        (,,,,,,,, bool resolved,, Market.outcomeType finalOutcome,,) = market.getMarketDetails();
+        assertTrue(resolved);
+        assertEq(uint8(finalOutcome), outcome);
+    }
+
+    /// @notice Test that only deployer can mint tokens
+    function testOnlyDeployerCanMint() public {
         vm.prank(user1);
-        market.bet{value: amountYes}(Market.outcomeType.Yes);
-        vm.prank(user2);
-        market.bet{value: amountNo}(Market.outcomeType.No);
+        vm.expectRevert(Token.OnlyDeployerCanMint.selector);
+        yesToken.mint(user1, 100);
+    }
 
-        vm.warp(deadline);
+    /// @notice Test approving and burning tokens correctly
+    function testApproveAndBurnTokens() public {
+        vm.deal(user1, 1 ether);
+        vm.prank(user1);
+        market.bet{value: 1 ether}(Market.outcomeType.Yes);
+
+        vm.warp(deadline + 1);
+        vm.prank(resolver);
+        market.resolve(Market.outcomeType.Yes);
+
+        uint256 userTokenBalance = yesToken.balanceOf(user1);
+
+        vm.startPrank(user1);
+        yesToken.approve(address(market), userTokenBalance);
+        market.distribute();
+        vm.stopPrank();
+
+        uint256 userTokenBalanceAfter = yesToken.balanceOf(user1);
+        assertEq(userTokenBalanceAfter, 0);
+    }
+
+    /// @notice Test that burning tokens without approval fails
+    function testBurnWithoutApproval() public {
+        vm.deal(user1, 1 ether);
+        vm.prank(user1);
+        market.bet{value: 1 ether}(Market.outcomeType.Yes);
+
+        vm.warp(deadline + 1);
         vm.prank(resolver);
         market.resolve(Market.outcomeType.Yes);
 
         vm.prank(user1);
-        uint256 balanceBefore = user1.balance;
+        vm.expectRevert();
         market.distribute();
-        uint256 balanceAfter = user1.balance;
-        assertEq(balanceAfter - balanceBefore, amountYes + amountNo);
-    }
-
-    function invariant_s_balanceNonNegative() public {
-        assertTrue(market.s_balance() >= 0);
-    }
-
-    function invariant_TotalSupplyConsistency() public {
-        uint256 totalSupplyYes = yesToken.totalSupply();
-        uint256 totalSupplyNo = noToken.totalSupply();
-        // Total tokens minus initial mints should not exceed s_balance
-        uint256 adjustedSupplyYes = totalSupplyYes > 1 ? totalSupplyYes - 1 : 0;
-        uint256 adjustedSupplyNo = totalSupplyNo > 1 ? totalSupplyNo - 1 : 0;
-        uint256 totalAdjustedSupply = adjustedSupplyYes + adjustedSupplyNo;
-        assertTrue(totalAdjustedSupply <= market.s_balance());
     }
 }

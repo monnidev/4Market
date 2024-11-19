@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-// we could add erc20s, appeal system, other types of markets, web ui, tests, bad stuff (ownable, uups)
+// we could add erc20s, appeal system, other types of markets, web ui, tests, fees, deposit to prevent spam, bad stuff (ownable, uups)
 // resolver can be a eoa, an oracle, a llm....
 // consider rewriting in yul with differential testing
 
@@ -13,8 +13,6 @@ contract FourMarket {
 
     /// @dev Tracks the next market ID to be assigned.
     uint256 public s_nextMarketId;
-    mapping(address => mapping(Market => bool)) public s_deposits;
-    uint256 public constant DEPOSIT_VALUE = 0.001 ether; // must return a constant
 
     /// @notice Event emitted upon the creation of a new market.
     /// @param marketId The ID of the newly created market.
@@ -49,47 +47,34 @@ contract FourMarket {
         uint256 _deadline,
         uint256 _resolutionTime,
         address _resolver
-    ) external payable {
-        require(msg.value == DEPOSIT_VALUE);
+    ) external returns (Market) {
         uint256 _nextMarketId = s_nextMarketId;
         Market market = new Market(_nextMarketId, _question, _details, _deadline, _resolutionTime, _resolver);
         markets[_nextMarketId] = market;
-        s_deposits[msg.sender][market] = true;
         s_nextMarketId++;
 
         // Emit the MarketCreated event with relevant details
         emit MarketCreated(_nextMarketId, _question, _details, _deadline, _resolutionTime, _resolver);
-    }
-
-    function refundDeposit(Market _marketToRefund) external {
-        require(s_deposits[msg.sender][_marketToRefund]);
-        uint256 _yesTokenSupply = _marketToRefund.s_yesToken().totalSupply();
-        uint256 _noTokenSupply = _marketToRefund.s_noToken().totalSupply();
-        if (_yesTokenSupply + _noTokenSupply >= DEPOSIT_VALUE) {
-            s_deposits[msg.sender][_marketToRefund] = false;
-            payable(msg.sender).transfer(DEPOSIT_VALUE);
-        } else {
-            revert();
-        }
+        return market;
     }
 
     /**
      * @notice Retrieves the details of a deployed market by its ID.
      * @dev Due to this function --via-ir is required to avoid 'Stack too deep' errors.
      * @param _marketId The ID of the market to retrieve.
-     * @return i_router Address of the router associated with the market.
-     * @return i_marketId ID of the market.
-     * @return s_balance Current balance of the market.
-     * @return s_question The question being addressed in the market.
-     * @return s_details Additional details about the market.
-     * @return i_deadline Deadline timestamp for market participation.
-     * @return i_resolutionTime Time at which the market is expected to be resolved.
-     * @return i_resolver Address of the resolver for the market.
-     * @return s_resolved Indicates if the market has been resolved.
-     * @return s_resolvedDate Timestamp of when the market was resolved.
-     * @return s_finalResolution The final resolution outcome of the market.
-     * @return s_yesToken Address of the "yes" token for the market.
-     * @return s_noToken Address of the "no" token for the market.
+     * @return router Address of the router associated with the market.
+     * @return marketId ID of the market.
+     * @return balance Current balance of the market.
+     * @return question The question being addressed in the market.
+     * @return details Additional details about the market.
+     * @return deadline Deadline timestamp for market participation.
+     * @return resolutionTime Time at which the market is expected to be resolved.
+     * @return resolver Address of the resolver for the market.
+     * @return resolved Indicates if the market has been resolved.
+     * @return resolvedDate Timestamp of when the market was resolved.
+     * @return finalResolution The final resolution outcome of the market.
+     * @return yesToken Address of the "yes" token for the market.
+     * @return noToken Address of the "no" token for the market.
      */
     function getDeployedMarket(uint256 _marketId)
         external

@@ -41,6 +41,7 @@ contract Market {
     Token public s_noToken;
 
     // Custom errors
+    error Market__InvalidDeadline();
     error Market__InvalidResolutionTime();
     error Market__BettingClosed();
     error Market__InvalidBetOutcome();
@@ -72,6 +73,7 @@ contract Market {
         uint256 _resolutionTime,
         address _resolver
     ) {
+        require(_deadline > block.timestamp, Market__InvalidDeadline());
         require(_resolutionTime > 1 days, Market__InvalidResolutionTime());
         i_router = msg.sender;
         i_marketId = _marketId;
