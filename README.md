@@ -1,5 +1,9 @@
 # 4Market
 
+- Tests should be improved, invariant tests should be added
+- We could add erc20s, appeal system, other types of markets, web ui, tests, fees, a deposit to prevent spam, bad stuff (ownable, uups)
+- Resolver can be a eoa, an oracle, a llm....
+- Consider rewriting in yul with differential testing
 
 
 ## Table of Contents
