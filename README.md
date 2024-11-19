@@ -50,5 +50,5 @@ git clone https://github.com/monnidev/4Market.git
 cd 4Market
 
 # Compile
-forge make
+forge build
 ```
