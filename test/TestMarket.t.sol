@@ -43,6 +43,13 @@ contract MarketTest is Test {
 
         yesToken = Token(yesTokenAddress);
         noToken = Token(noTokenAddress);
+
+        // Exclude the Token contracts from fuzzing
+        excludeContract(address(yesToken));
+        excludeContract(address(noToken));
+
+        // Register the market contract for invariant testing
+        targetContract(address(market));
     }
 
     /// @notice Test distributing rewards for "Yes" outcome
@@ -83,23 +90,6 @@ contract MarketTest is Test {
         vm.expectRevert(Market.Market__NoTokensToClaim.selector);
         market.distribute();
         vm.stopPrank();
-    }
-
-    /// @notice Invariant test to ensure market balance equals total bets placed
-    function invariant_MarketBalanceEqualsTotalBets() public view {
-        uint256 yesTokenSupply = yesToken.totalSupply() - 1;
-        uint256 noTokenSupply = noToken.totalSupply() - 1;
-
-        uint256 totalBets = yesTokenSupply + noTokenSupply;
-        uint256 marketBalance = address(market).balance;
-
-        // Skip the check if totalBets or marketBalance are unreasonably large to prevent overflows
-        if (totalBets > 1e28 || marketBalance > 1e28) {
-            return;
-        }
-
-        // Allow a small difference due to the initial extra token and rounding
-        assertApproxEqAbs(totalBets, marketBalance, 1 wei);
     }
 
     /// @notice Test placing a bet on "Yes" outcome

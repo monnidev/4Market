@@ -45,6 +45,6 @@ git clone https://github.com/monnidev/4Market.git
 # Navigate to the project directory
 cd 4Market
 
-# Install dependencies
-make install
+# Compile
+forge make
 ```
