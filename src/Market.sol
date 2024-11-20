@@ -22,6 +22,10 @@ contract Market {
     uint256 immutable i_resolutionTime;
     /// @notice The address responsible for resolving the market.
     address immutable i_resolver;
+    /// @notice The token representing "Yes" bets.
+    Token public immutable i_yesToken;
+    /// @notice The token representing "No" bets.
+    Token public immutable i_noToken;
 
     /// @notice The total balance of the market.
     uint256 public s_balance;
@@ -35,10 +39,6 @@ contract Market {
     uint256 private s_resolvedDate;
     /// @notice The final outcome of the market.
     outcomeType private s_finalResolution;
-    /// @notice The token representing "Yes" bets.
-    Token public s_yesToken;
-    /// @notice The token representing "No" bets.
-    Token public s_noToken;
 
     // Custom errors
     error Market__InvalidDeadline();
