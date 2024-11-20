@@ -14,24 +14,31 @@ contract FourMarket {
     /// @dev Tracks the next market ID to be assigned.
     uint256 public s_nextMarketId;
 
-    /// @notice Event emitted upon the creation of a new market.
-    /// @param marketId The ID of the newly created market.
-    /// @param question The question associated with the market.
-    /// @param details Additional details about the market.
-    /// @param deadline The closing timestamp for new participants.
-    /// @param resolutionTime Expected resolution timestamp for the market.
-    /// @param resolver Address of the entity responsible for resolving the market.
-    event MarketCreated(
-        uint256 indexed marketId,
-        string question,
-        string details,
-        uint256 deadline,
-        uint256 resolutionTime,
-        address indexed resolver
-    );
+    // /// @notice Event emitted upon the creation of a new market.
+    // /// @param marketId The ID of the newly created market.
+    // /// @param question The question associated with the market.
+    // /// @param details Additional details about the market.
+    // /// @param deadline The closing timestamp for new participants.
+    // /// @param resolutionTime Expected resolution timestamp for the market.
+    // /// @param resolver Address of the entity responsible for resolving the market.
+    // event MarketCreated(
+    //     uint256 indexed marketId,
+    //     string question,
+    //     string details,
+    //     uint256 deadline,
+    //     uint256 resolutionTime,
+    //     address indexed resolver
+    // );
+    bytes32 constant MarketCreatedEventTopic = 0xc7fae8c73c267c81d935ffafce8174b73c23106629b53942c363c53c2231be33;
 
     /// @dev Custom error for cases where a market ID does not exist.
-    error MarketIdDoesNotExist();
+    // error MarketIdDoesNotExist();
+    bytes4 constant MarketIdDoesNotExistErrorSelector = 0xd2d9f43e;
+
+    // address MarketContractAddess;
+    // constructor() {
+    //     MarketContractAddess = address(new Market);
+    // }
 
     /**
      * @notice Creates a new market with the specified parameters.
@@ -48,14 +55,35 @@ contract FourMarket {
         uint256 _resolutionTime,
         address _resolver
     ) external returns (Market) {
-        uint256 _nextMarketId = s_nextMarketId;
-        Market market = new Market(_nextMarketId, _question, _details, _deadline, _resolutionTime, _resolver);
-        markets[_nextMarketId] = market;
-        s_nextMarketId++;
+        Market market = new Market(s_nextMarketId, _question, _details, _deadline, _resolutionTime, _resolver);
+        assembly{
+            // Assigns free memory pointer to `memptr`.
+            let memptr := mload(0x40)
 
-        // Emit the MarketCreated event with relevant details
-        emit MarketCreated(_nextMarketId, _question, _details, _deadline, _resolutionTime, _resolver);
-        return market;
+            // Store `_addr` in memory location `memptr`.
+            mstore(memptr, sload(s_nextMarketId.slot))
+            // Store the map's slot in memory location memptr+0x20.
+            mstore(add(sload(s_nextMarketId.slot), 0x20), markets.slot)
+
+            let marketSlot := keccak256(memptr, 0x40)
+            sstore(marketSlot, market)
+
+            // Emit the MarketCreated event with relevant details
+            mstore(0x00, _question)
+            mstore(0x20, _details)
+            mstore(0x40, _deadline)
+            mstore(0x60, _resolutionTime)
+            mstore(0x80, _resolver)
+
+            log2(0x40, 0x100, MarketCreatedEventTopic, sload(s_nextMarketId.slot))
+
+            // increment s_nextMarketId
+            sstore(s_nextMarketId.slot, add(sload(s_nextMarketId.slot), 1))
+
+            // return market
+            return(sload(market), 0x20)
+        }
+
     }
 
     /**
@@ -95,7 +123,13 @@ contract FourMarket {
             address
         )
     {
-        require(_marketId < s_nextMarketId, MarketIdDoesNotExist());
+        assembly {
+            let numMarkets := sload(s_nextMarketId.slot)
+            if not(lt(numMarkets,_marketId)){
+                mstore(0x00, MarketIdDoesNotExistErrorSelector)
+                revert(0x00, 0x04)
+            }
+        }
         return markets[_marketId].getMarketDetails();
     }
 

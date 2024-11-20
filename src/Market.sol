@@ -22,6 +22,10 @@ contract Market {
     uint256 immutable i_resolutionTime;
     /// @notice The address responsible for resolving the market.
     address immutable i_resolver;
+    /// @notice The token representing "Yes" bets.
+    Token public immutable i_yesToken;
+    /// @notice The token representing "No" bets.
+    Token public immutable i_noToken;
 
     /// @notice The total balance of the market.
     uint256 public s_balance;
@@ -31,20 +35,17 @@ contract Market {
     string private s_details;
     /// @notice Indicates whether the market has been resolved.
     bool private s_resolved;
-    /// @notice The final outcome of the market.
-    outcomeType private s_finalResolution;
     /// @notice The timestamp when the market was resolved.
     uint256 private s_resolvedDate;
-    /// @notice The token representing "Yes" bets.
-    Token public s_yesToken;
-    /// @notice The token representing "No" bets.
-    Token public s_noToken;
+    /// @notice The final outcome of the market.
+    outcomeType private s_finalResolution;
 
     // Custom errors
     error Market__InvalidDeadline();
     error Market__InvalidResolutionTime();
     error Market__BettingClosed();
     error Market__InvalidBetOutcome();
+    error Market__OnlyResolverCanResolve();
     error Market__ResolveTooEarly();
     error Market__ResolveTooLate();
     error Market__AlreadyResolved();
@@ -57,11 +58,6 @@ contract Market {
     event MarketResolved(outcomeType finalOutcome, uint256 resolvedDate);
     event RewardsDistributed(address indexed user, uint256 rewardAmount);
     event MarketCancelled(uint256 cancelledDate);
-
-    // bytes32 constant BetPlacedEventTopic = 0x9d0a25ce916e80804f775f0493f1f2d81653bd094ead4388dbdf5ea28c35c8d2;
-    // bytes32 constant MarketResolvedEventTopic = 0x55c41031e6fc864f2a00cf7433177f109b38f4ede57664c97dba0d7c138bffb4;
-    // bytes32 constant MarketCancelledEventTopic = 0x9d0a25ce916e80804f775f0493f1f2d81653bd094ead4388dbdf5ea28c35c8d2;
-    // bytes32 constant RewardsDistributedEventTopic = 0xdf29796aad820e4bb192f3a8d631b76519bcd2cbe77cc85af20e9df53cece086;
 
     /// @notice Initializes the market with given parameters.
     /// @param _marketId The unique ID of the market.
@@ -87,10 +83,10 @@ contract Market {
         i_deadline = _deadline;
         i_resolutionTime = _resolutionTime;
         i_resolver = _resolver;
-        s_yesToken = new Token(
+        i_yesToken = new Token(
             string(abi.encodePacked("Market ", i_marketId, ": Yes")), string(abi.encodePacked("MKT", i_marketId, "Y"))
         );
-        s_noToken = new Token(
+        i_noToken = new Token(
             string(abi.encodePacked("Market ", i_marketId, ": No")), string(abi.encodePacked("MKT", i_marketId, "N"))
         );
     }
@@ -100,36 +96,28 @@ contract Market {
     function bet(outcomeType _betOutcome) public payable {
         require(block.timestamp < i_deadline, Market__BettingClosed());
         require(_betOutcome != outcomeType.Neither, Market__InvalidBetOutcome());
-        assembly {
-            sstore(s_balance.slot, add(sload(s_balance.slot), callvalue()))
-        }
+        s_balance += msg.value;
         if (_betOutcome == outcomeType.Yes) {
-            s_yesToken.mint(msg.sender, msg.value);
+            i_yesToken.mint(msg.sender, msg.value);
         } else if (_betOutcome == outcomeType.No) {
-            s_noToken.mint(msg.sender, msg.value);
+            i_noToken.mint(msg.sender, msg.value);
         } else {
-            revert();
+            revert Market__InvalidBetOutcome();
         }
         emit BetPlaced(msg.sender, _betOutcome, msg.value);
-        // assembly{
-        //     log4(0x00, 0x00, BetPlacedEventTopic, caller(), _betOutcome, callvalue())
-        // }
     }
 
     /// @notice Resolves the market with the final outcome.
     /// @param _finalResolution The final outcome of the market.
     function resolve(outcomeType _finalResolution) external {
+        require(msg.sender == i_resolver, Market__OnlyResolverCanResolve());
         require(block.timestamp >= i_deadline, Market__ResolveTooEarly());
         require(block.timestamp <= i_deadline + i_resolutionTime, Market__ResolveTooLate());
         require(!s_resolved, Market__AlreadyResolved());
-
         s_finalResolution = _finalResolution;
         s_resolvedDate = block.timestamp;
         s_resolved = true;
         emit MarketResolved(_finalResolution, s_resolvedDate);
-        // assembly{
-        //     log3(0x00, 0x00, MarketResolvedEventTopic, _finalResolution, sload(s_resolvedDate.slot))
-        // }
     }
 
     /// @notice Distributes rewards to users based on the final outcome.
@@ -137,25 +125,31 @@ contract Market {
     function distribute() external {
         require(s_resolved, Market__NotResolved());
         uint256 _rewardAmount;
-        
-        if (s_finalResolution != outcomeType.Neither) {
-            Token token = s_finalResolution == outcomeType.Yes ? s_yesToken: s_noToken;
-            uint256 _userBalance = token.balanceOf(msg.sender);
+
+        if (s_finalResolution == outcomeType.Yes) {
+            uint256 _userBalance = i_yesToken.balanceOf(msg.sender);
             require(_userBalance > 0, Market__NoTokensToClaim());
-            _rewardAmount = s_balance * _userBalance / token.totalSupply();
-            token.burnFrom(msg.sender, _userBalance);
-        } else {
-            uint256 _yesUserBalance = s_yesToken.balanceOf(msg.sender);
-            uint256 _noUserBalance = s_noToken.balanceOf(msg.sender);
+            _rewardAmount = (s_balance * _userBalance) / i_yesToken.totalSupply();
+
+            i_yesToken.burnFrom(msg.sender, _userBalance);
+        } else if (s_finalResolution == outcomeType.No) {
+            uint256 _userBalance = i_noToken.balanceOf(msg.sender);
+            require(_userBalance > 0, Market__NoTokensToClaim());
+            _rewardAmount = (s_balance * _userBalance) / i_noToken.totalSupply();
+
+            i_noToken.burnFrom(msg.sender, _userBalance);
+        } else if (s_finalResolution == outcomeType.Neither) {
+            uint256 _yesUserBalance = i_yesToken.balanceOf(msg.sender);
+            uint256 _noUserBalance = i_noToken.balanceOf(msg.sender);
             require(_yesUserBalance + _noUserBalance > 0, Market__NoTokensToClaim());
             _rewardAmount =
-                (s_balance * (_yesUserBalance + _noUserBalance)) / (s_yesToken.totalSupply() + s_noToken.totalSupply());
+                (s_balance * (_yesUserBalance + _noUserBalance)) / (i_yesToken.totalSupply() + i_noToken.totalSupply());
 
-            if (_yesUserBalance > 0) s_yesToken.burnFrom(msg.sender, _yesUserBalance);
-            if (_noUserBalance > 0) s_noToken.burnFrom(msg.sender, _noUserBalance);
+            if (_yesUserBalance > 0) i_yesToken.burnFrom(msg.sender, _yesUserBalance);
+            if (_noUserBalance > 0) i_noToken.burnFrom(msg.sender, _noUserBalance);
         }
-        payable(msg.sender).transfer(_rewardAmount);
         s_balance -= _rewardAmount;
+        payable(msg.sender).transfer(_rewardAmount);
         emit RewardsDistributed(msg.sender, _rewardAmount);
     }
 
@@ -163,16 +157,10 @@ contract Market {
     function inactivityCancel() external {
         require(block.timestamp > i_deadline + i_resolutionTime, Market__InactivityPeriodNotReached());
         require(!s_resolved, Market__AlreadyResolved());
-
-        assembly {
-            sstore(s_finalResolution.slot, 0)
-            sstore(s_resolvedDate.slot, timestamp())
-            sstore(s_resolved.slot, 1)
-            // log2(0x00, 0x00, MarketCancelledEventTopic, sload(s_resolvedDate.slot))
-        }
+        s_finalResolution = outcomeType.Neither;
+        s_resolvedDate = block.timestamp;
+        s_resolved = true;
         emit MarketCancelled(s_resolvedDate);
-        
-
     }
 
     /// @notice Returns all the details of the market.
@@ -208,8 +196,8 @@ contract Market {
             s_resolved,
             s_resolvedDate,
             s_finalResolution,
-            address(s_yesToken),
-            address(s_noToken)
+            address(i_yesToken),
+            address(i_noToken)
         );
     }
 
