@@ -13,8 +13,7 @@ contract Token is ERC20Burnable {
     error OnlyDeployerCanMint();
 
     /**
-     * @notice Constructor to initialize the token with a name, symbol, and a single minted token.
-     * @dev Mints 1 token to the deployer upon deployment to prevent division by zero errors in token operations.
+     * @notice Constructor to initialize the token with a name and symbol.
      * @param name The name of the token.
      * @param symbol The symbol of the token.
      */
