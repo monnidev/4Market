@@ -11,7 +11,7 @@ contract TokenTest is Test {
 
     function setUp() public {
         deployer = address(this);
-        user1 = address(0x1);
+        user1 = address(0x500);
         token = new Token("Test Token", "TTK");
     }
 
@@ -19,33 +19,43 @@ contract TokenTest is Test {
         assertEq(token.totalSupply(), 0);
     }
 
-    function testDeployerCanMint() public {
-        token.mint(user1, 1000);
-        assertEq(token.totalSupply(), 1000);
-        assertEq(token.balanceOf(user1), 1000);
+    function testDeployerCanMint(address user, uint256 amount) public {
+        token.mint(user, amount);
+        assertEq(token.totalSupply(), amount);
+        assertEq(token.balanceOf(user), amount);
     }
 
-    function testNonDeployerCannotMint(address nonDeployer) public {
+    function testNonDeployerCannotMint(address nonDeployer, address user, uint256 amount) public {
         vm.assume(nonDeployer != deployer);
         vm.prank(nonDeployer);
         vm.expectRevert(Token.OnlyDeployerCanMint.selector);
-        token.mint(user1, 1000);
+        token.mint(user, amount);
     }
 
-    function testBurn() public {
-        token.mint(user1, 1000);
-        vm.prank(user1);
-        token.burn(500);
-        assertEq(token.balanceOf(user1), 500);
-        assertEq(token.totalSupply(), 500);
+    function testBurn(address user, uint256 amount, uint256 burnAmount) public {
+        token.mint(user, amount);
+        vm.prank(user);
+        if (burnAmount > amount) {
+            vm.expectRevert();
+            token.burn(burnAmount);
+        } else {
+            token.burn(burnAmount);
+            assertEq(token.balanceOf(user), amount - burnAmount);
+            assertEq(token.totalSupply(), amount - burnAmount);
+        }
     }
 
-    function testBurnFrom() public {
-        token.mint(user1, 1000);
-        vm.prank(user1);
-        token.approve(deployer, 500);
-        token.burnFrom(user1, 500);
-        assertEq(token.balanceOf(user1), 500);
-        assertEq(token.totalSupply(), 500);
+    function testBurnFrom(address user, uint256 amount, uint256 burnAmount) public {
+        token.mint(user, amount);
+        vm.prank(user);
+        token.approve(deployer, amount);
+        if (burnAmount > amount) {
+            vm.expectRevert();
+            token.burnFrom(user, burnAmount);
+        } else {
+            token.burnFrom(user, burnAmount);
+            assertEq(token.balanceOf(user), amount - burnAmount);
+            assertEq(token.totalSupply(), amount - burnAmount);
+        }
     }
 }
