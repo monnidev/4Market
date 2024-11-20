@@ -45,6 +45,7 @@ contract Market {
     error Market__InvalidResolutionTime();
     error Market__BettingClosed();
     error Market__InvalidBetOutcome();
+    error Market__OnlyResolverCanResolve();
     error Market__ResolveTooEarly();
     error Market__ResolveTooLate();
     error Market__AlreadyResolved();
@@ -101,7 +102,7 @@ contract Market {
         } else if (_betOutcome == outcomeType.No) {
             s_noToken.mint(msg.sender, msg.value);
         } else {
-            revert();
+            revert Market__InvalidBetOutcome();
         }
         emit BetPlaced(msg.sender, _betOutcome, msg.value);
     }
@@ -109,6 +110,7 @@ contract Market {
     /// @notice Resolves the market with the final outcome.
     /// @param _finalResolution The final outcome of the market.
     function resolve(outcomeType _finalResolution) external {
+        require(msg.sender == i_resolver, Market__OnlyResolverCanResolve());
         require(block.timestamp >= i_deadline, Market__ResolveTooEarly());
         require(block.timestamp <= i_deadline + i_resolutionTime, Market__ResolveTooLate());
         require(!s_resolved, Market__AlreadyResolved());
@@ -130,14 +132,12 @@ contract Market {
             _rewardAmount = (s_balance * _userBalance) / s_yesToken.totalSupply();
 
             s_yesToken.burnFrom(msg.sender, _userBalance);
-            payable(msg.sender).transfer(_rewardAmount);
         } else if (s_finalResolution == outcomeType.No) {
             uint256 _userBalance = s_noToken.balanceOf(msg.sender);
             require(_userBalance > 0, Market__NoTokensToClaim());
             _rewardAmount = (s_balance * _userBalance) / s_noToken.totalSupply();
 
             s_noToken.burnFrom(msg.sender, _userBalance);
-            payable(msg.sender).transfer(_rewardAmount);
         } else if (s_finalResolution == outcomeType.Neither) {
             uint256 _yesUserBalance = s_yesToken.balanceOf(msg.sender);
             uint256 _noUserBalance = s_noToken.balanceOf(msg.sender);
@@ -147,9 +147,9 @@ contract Market {
 
             if (_yesUserBalance > 0) s_yesToken.burnFrom(msg.sender, _yesUserBalance);
             if (_noUserBalance > 0) s_noToken.burnFrom(msg.sender, _noUserBalance);
-            payable(msg.sender).transfer(_rewardAmount);
         }
         s_balance -= _rewardAmount;
+        payable(msg.sender).transfer(_rewardAmount);
         emit RewardsDistributed(msg.sender, _rewardAmount);
     }
 

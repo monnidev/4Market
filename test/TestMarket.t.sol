@@ -144,6 +144,15 @@ contract MarketTest is Test {
         assertTrue(resolved);
     }
 
+    /// @notice Only the resolver can resolve the market
+    function testOnlyResolverCanResolve(address nonResolver) public {
+        vm.assume(nonResolver != resolver);
+        vm.warp(deadline + 1);
+        vm.prank(nonResolver);
+        vm.expectRevert(Market.Market__OnlyResolverCanResolve.selector);
+        market.resolve(Market.outcomeType.Yes);
+    }
+
     /// @notice Test resolving the market too late
     function testResolveTooLate() public {
         vm.warp(deadline + resolutionTime + 1);

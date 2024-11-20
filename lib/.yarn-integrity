@@ -11,7 +11,7 @@
   ],
   "lockfileEntries": {
     "forge-std@https://github.com/foundry-rs/forge-std": "https://github.com/foundry-rs/forge-std#0e7097750918380d84dd3cfdef595bee74dabb70",
-    "openzeppelin-solidity@https://github.com/OpenZeppelin/openzeppelin-contracts": "https://github.com/OpenZeppelin/openzeppelin-contracts#dac63c4612df765c9d0f24d9148e912b8cd5032f"
+    "openzeppelin-solidity@https://github.com/OpenZeppelin/openzeppelin-contracts": "https://github.com/OpenZeppelin/openzeppelin-contracts#ccb5f2d8ca9d194623cf3cff7f010ab92715826b"
   },
   "files": [],
   "artifacts": {}

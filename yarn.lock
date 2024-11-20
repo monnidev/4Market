@@ -8,4 +8,4 @@
 
 "openzeppelin-solidity@https://github.com/OpenZeppelin/openzeppelin-contracts":
   version "5.1.0"
-  resolved "https://github.com/OpenZeppelin/openzeppelin-contracts#dac63c4612df765c9d0f24d9148e912b8cd5032f"
+  resolved "https://github.com/OpenZeppelin/openzeppelin-contracts#ccb5f2d8ca9d194623cf3cff7f010ab92715826b"
