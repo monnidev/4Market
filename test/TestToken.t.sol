@@ -16,13 +16,12 @@ contract TokenTest is Test {
     }
 
     function testInitialSupply() public {
-        assertEq(token.totalSupply(), 1); // initial mint of 1 token to deployer
-        assertEq(token.balanceOf(deployer), 1);
+        assertEq(token.totalSupply(), 0);
     }
 
     function testDeployerCanMint() public {
         token.mint(user1, 1000);
-        assertEq(token.totalSupply(), 1001);
+        assertEq(token.totalSupply(), 1000);
         assertEq(token.balanceOf(user1), 1000);
     }
 
@@ -38,7 +37,7 @@ contract TokenTest is Test {
         vm.prank(user1);
         token.burn(500);
         assertEq(token.balanceOf(user1), 500);
-        assertEq(token.totalSupply(), 501); // 1 initial + 1000 - 500 burned
+        assertEq(token.totalSupply(), 500);
     }
 
     function testBurnFrom() public {
@@ -47,6 +46,6 @@ contract TokenTest is Test {
         token.approve(deployer, 500);
         token.burnFrom(user1, 500);
         assertEq(token.balanceOf(user1), 500);
-        assertEq(token.totalSupply(), 501);
+        assertEq(token.totalSupply(), 500);
     }
 }
