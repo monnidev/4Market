@@ -20,7 +20,6 @@ contract Token is ERC20Burnable {
      */
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {
         i_deployer = msg.sender;
-        _mint(msg.sender, 1); // Mint 1 token to avoid potential division by zero issues
     }
 
     /**
