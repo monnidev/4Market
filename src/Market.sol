@@ -83,10 +83,10 @@ contract Market {
         i_deadline = _deadline;
         i_resolutionTime = _resolutionTime;
         i_resolver = _resolver;
-        s_yesToken = new Token(
+        i_yesToken = new Token(
             string(abi.encodePacked("Market ", i_marketId, ": Yes")), string(abi.encodePacked("MKT", i_marketId, "Y"))
         );
-        s_noToken = new Token(
+        i_noToken = new Token(
             string(abi.encodePacked("Market ", i_marketId, ": No")), string(abi.encodePacked("MKT", i_marketId, "N"))
         );
     }
@@ -98,9 +98,9 @@ contract Market {
         require(_betOutcome != outcomeType.Neither, Market__InvalidBetOutcome());
         s_balance += msg.value;
         if (_betOutcome == outcomeType.Yes) {
-            s_yesToken.mint(msg.sender, msg.value);
+            i_yesToken.mint(msg.sender, msg.value);
         } else if (_betOutcome == outcomeType.No) {
-            s_noToken.mint(msg.sender, msg.value);
+            i_noToken.mint(msg.sender, msg.value);
         } else {
             revert Market__InvalidBetOutcome();
         }
@@ -127,26 +127,26 @@ contract Market {
         uint256 _rewardAmount;
 
         if (s_finalResolution == outcomeType.Yes) {
-            uint256 _userBalance = s_yesToken.balanceOf(msg.sender);
+            uint256 _userBalance = i_yesToken.balanceOf(msg.sender);
             require(_userBalance > 0, Market__NoTokensToClaim());
-            _rewardAmount = (s_balance * _userBalance) / s_yesToken.totalSupply();
+            _rewardAmount = (s_balance * _userBalance) / i_yesToken.totalSupply();
 
-            s_yesToken.burnFrom(msg.sender, _userBalance);
+            i_yesToken.burnFrom(msg.sender, _userBalance);
         } else if (s_finalResolution == outcomeType.No) {
-            uint256 _userBalance = s_noToken.balanceOf(msg.sender);
+            uint256 _userBalance = i_noToken.balanceOf(msg.sender);
             require(_userBalance > 0, Market__NoTokensToClaim());
-            _rewardAmount = (s_balance * _userBalance) / s_noToken.totalSupply();
+            _rewardAmount = (s_balance * _userBalance) / i_noToken.totalSupply();
 
-            s_noToken.burnFrom(msg.sender, _userBalance);
+            i_noToken.burnFrom(msg.sender, _userBalance);
         } else if (s_finalResolution == outcomeType.Neither) {
-            uint256 _yesUserBalance = s_yesToken.balanceOf(msg.sender);
-            uint256 _noUserBalance = s_noToken.balanceOf(msg.sender);
+            uint256 _yesUserBalance = i_yesToken.balanceOf(msg.sender);
+            uint256 _noUserBalance = i_noToken.balanceOf(msg.sender);
             require(_yesUserBalance + _noUserBalance > 0, Market__NoTokensToClaim());
             _rewardAmount =
-                (s_balance * (_yesUserBalance + _noUserBalance)) / (s_yesToken.totalSupply() + s_noToken.totalSupply());
+                (s_balance * (_yesUserBalance + _noUserBalance)) / (i_yesToken.totalSupply() + i_noToken.totalSupply());
 
-            if (_yesUserBalance > 0) s_yesToken.burnFrom(msg.sender, _yesUserBalance);
-            if (_noUserBalance > 0) s_noToken.burnFrom(msg.sender, _noUserBalance);
+            if (_yesUserBalance > 0) i_yesToken.burnFrom(msg.sender, _yesUserBalance);
+            if (_noUserBalance > 0) i_noToken.burnFrom(msg.sender, _noUserBalance);
         }
         s_balance -= _rewardAmount;
         payable(msg.sender).transfer(_rewardAmount);
@@ -196,8 +196,8 @@ contract Market {
             s_resolved,
             s_resolvedDate,
             s_finalResolution,
-            address(s_yesToken),
-            address(s_noToken)
+            address(i_yesToken),
+            address(i_noToken)
         );
     }
 
