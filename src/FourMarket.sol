@@ -29,6 +29,7 @@ contract FourMarket {
         uint256 resolutionTime,
         address indexed resolver
     );
+    // bytes32 constant MarketCreatedEventTopic = 0xc7fae8c73c267c81d935ffafce8174b73c23106629b53942c363c53c2231be33;
 
     /// @dev Custom error for cases where a market ID does not exist.
     error MarketIdDoesNotExist();
@@ -48,14 +49,28 @@ contract FourMarket {
         uint256 _resolutionTime,
         address _resolver
     ) external returns (Market) {
-        uint256 _nextMarketId = s_nextMarketId;
-        Market market = new Market(_nextMarketId, _question, _details, _deadline, _resolutionTime, _resolver);
-        markets[_nextMarketId] = market;
-        s_nextMarketId++;
+        markets[s_nextMarketId] = new Market(s_nextMarketId, _question, _details, _deadline, _resolutionTime, _resolver);
+        // assembly{
+        //     // Assigns free memory pointer to `memptr`.
+        //     let memptr := mload(0x40)
 
+        //     // Store `_addr` in memory location `memptr`.
+        //     mstore(memptr, sload(s_nextMarketId.slot))
+
+        //     // Store the myMap's slot in memory location memptr+0x20.
+        //     mstore(add(sload(s_nextMarketId.slot), 0x20), markets.slot)
+        //     sstore(keccak256(memptr, 0x40), market)
+        // }
+        
         // Emit the MarketCreated event with relevant details
-        emit MarketCreated(_nextMarketId, _question, _details, _deadline, _resolutionTime, _resolver);
-        return market;
+        emit MarketCreated(s_nextMarketId, _question, _details, _deadline, _resolutionTime, _resolver);
+
+        // increment s_nextMarketId
+        assembly {
+            sstore(s_nextMarketId.slot, add(sload(s_nextMarketId.slot), 1))
+        }
+
+        return markets[s_nextMarketId-1];
     }
 
     /**
