@@ -20,12 +20,14 @@ contract TokenTest is Test {
     }
 
     function testDeployerCanMint(address user, uint256 amount) public {
+        vm.assume(user != address(0x0));
         token.mint(user, amount);
         assertEq(token.totalSupply(), amount);
         assertEq(token.balanceOf(user), amount);
     }
 
     function testNonDeployerCannotMint(address nonDeployer, address user, uint256 amount) public {
+        vm.assume(user != address(0x0) && nonDeployer != address(0x0));
         vm.assume(nonDeployer != deployer);
         vm.prank(nonDeployer);
         vm.expectRevert(Token.OnlyDeployerCanMint.selector);
@@ -33,6 +35,7 @@ contract TokenTest is Test {
     }
 
     function testBurn(address user, uint256 amount, uint256 burnAmount) public {
+        vm.assume(user != address(0x0));
         token.mint(user, amount);
         vm.prank(user);
         if (burnAmount > amount) {
@@ -46,6 +49,7 @@ contract TokenTest is Test {
     }
 
     function testBurnFrom(address user, uint256 amount, uint256 burnAmount) public {
+        vm.assume(user != address(0x0));
         token.mint(user, amount);
         vm.prank(user);
         token.approve(deployer, amount);

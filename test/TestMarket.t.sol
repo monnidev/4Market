@@ -52,6 +52,10 @@ contract MarketTest is Test {
         targetContract(address(market));
     }
 
+    function invariantBalanceEqualsTokensRevertsOk() public {
+        assertEq(market.s_balance(), yesToken.totalSupply() + noToken.totalSupply());
+    }
+
     /// @notice Test distributing rewards for "Yes" outcome
     function testDistributeYesOutcome() public {
         // User1 bets on Yes
