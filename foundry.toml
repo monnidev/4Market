@@ -1,5 +1,5 @@
 [profile.default]
-src = "src"
+src = "srcYUL"
 out = "out"
 libs = ["lib"]
 optimizer = true
